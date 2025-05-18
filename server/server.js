@@ -2,27 +2,25 @@ import express from "express";
 import "dotenv/config";
 import cors from "cors";
 import connectDB from "./Config/db.js";
-import { clerkMiddleware } from '@clerk/express'
+import { clerkMiddleware } from "@clerk/express";
 import clerkWebHooks from "./controllers/ClerkWebhooks.js";
 
+connectDB();
 
-connectDB()
+const app = express();
 
-const app = express ()
-app.use(cors()) // enable cross-Origin Resourse sharing
+app.use(cors());
 
-// Middleware
+// Parse json for all routes except webhook route
 app.use(express.json());
+
+// Use raw body parser ONLY for webhook route to verify signatures correctly
+app.post("/api/clerk", express.raw({ type: "application/json" }), clerkWebHooks);
+
+// Clerk middleware for other routes
 app.use(clerkMiddleware());
 
-//  Api to   clear web hook 
+app.get("/", (req, res) => res.send("API is Working"));
 
-app.use("/api/clerk" , clerkWebHooks);
-
-app.get('/' , (req , res )=> res.send("Api is Working") )
-
-
-const PORT = process.env.PORT  || 3000;
-
-
-app.listen(PORT , ()=> console.log(`server runing on port ${PORT}`));
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
