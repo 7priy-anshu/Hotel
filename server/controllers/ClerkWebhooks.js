@@ -11,28 +11,61 @@ const clerkWebHooks = async (req, res) => {
       "svix-signature": req.headers["svix-signature"],
     };
 
-    // Pass raw body buffer directly
+    // Pass raw body buffer directly for verification
     const event = whook.verify(req.body, headers);
 
     const { data, type } = event;
 
+    console.log(`Received Clerk event: ${type}`, data);
+
+    // Prepare user data safely
     const userData = {
       _id: data.id,
       email: data.email_addresses?.[0]?.email_address || "",
-      username: `${data.first_name || ""} ${data.last_name || ""}`.trim(),
+      username: `${data.first_name || ""} ${data.last_name || ""}`.trim() || "Anonymous",
       image: data.image_url || "",
     };
 
     switch (type) {
       case "user.created":
-        await User.create(userData);
+        {
+          const existingUser = await User.findById(data.id);
+          if (!existingUser) {
+            if (!userData.email) {
+              throw new Error("Email is required for user creation.");
+            }
+            await User.create(userData);
+            console.log("New user created:", userData);
+          } else {
+            console.log("User already exists, skipping create:", data.id);
+          }
+        }
         break;
+
       case "user.updated":
-        await User.findByIdAndUpdate(data.id, userData, { new: true });
+        {
+          const existingUser = await User.findById(data.id);
+          if (existingUser) {
+            await User.findByIdAndUpdate(data.id, userData, { new: true });
+            console.log("User updated:", data.id);
+          } else {
+            console.log("User not found for update, skipping:", data.id);
+          }
+        }
         break;
+
       case "user.deleted":
-        await User.findByIdAndDelete(data.id);
+        {
+          const existingUser = await User.findById(data.id);
+          if (existingUser) {
+            await User.findByIdAndDelete(data.id);
+            console.log("User deleted:", data.id);
+          } else {
+            console.log("User not found for delete, skipping:", data.id);
+          }
+        }
         break;
+
       default:
         console.log(`Unhandled event type: ${type}`);
         break;
