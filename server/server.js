@@ -15,7 +15,7 @@ app.use(cors());
 app.use(express.json());
 
 // Use raw body parser ONLY for webhook route to verify signatures correctly
-app.post("/api/clerk", express.raw({ type: "application/json" }), clerkWebHooks);
+app.use("/api/clerk", clerkWebHooks);
 
 // Clerk middleware for other routes
 app.use(clerkMiddleware());
